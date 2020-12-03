@@ -2,9 +2,6 @@
 
 import sys
 
-global HLT
-HLT = 0b0000001
-
 
 class CPU:
     """Main CPU class."""
@@ -20,27 +17,26 @@ class CPU:
     def ram_write(self, MAR, MDR):
         self.ram[MAR] = MDR
 
-    def load(self):
+    def load(self, file):
         """Load a program into memory."""
 
         address = 0
 
-        # For now, we've just hardcoded a program:
-
-        program = [
-            # From print8.ls8
-            0b10000010, # LDI R0,8
-            0b00000000,
-            0b00001000,
-            0b01000111, # PRN R0
-            0b00000000,
-            0b00000001, # HLT
-        ]
+        file = open(file, 'r')
+        program = file.readlines()
 
         for instruction in program:
-            self.ram[address] = instruction
-            address += 1
-
+            if instruction[0] != "#" and instruction != '\n':
+                instruction = instruction[:8]
+                if instruction == "01000111":
+                    self.ram[address] = 'PRN'
+                elif instruction == "10000010":
+                    self.ram[address] = 'LDI'
+                elif instruction == "00000001":
+                    self.ram[address] = 'HLT'
+                else:
+                    self.ram[address] = int(instruction,2)
+                address += 1
 
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
@@ -79,18 +75,16 @@ class CPU:
                 operand_a, operand_b = self.ram_read(ir + 1), self.ram_read(ir + 2)
             except IndexError:
                 operand_a, operand_b = None, None
-
-            if instruction == HLT:
+            if instruction == "HLT":
                 break
-            elif instruction == 0b10000010:
+            elif instruction == "LDI":
                 self.LDI(operand_a, operand_b)
                 self.pc += 1
-            elif instruction == 0b01000111:
+            elif instruction == "PRN":
                 self.PRN(operand_a)
                 self.pc += 1
             else:
                 self.pc += 1
-
 
 
     def LDI(self, address, value):

@@ -5,6 +5,7 @@ import sys
 global HLT
 HLT = 0b0000001
 
+
 class CPU:
     """Main CPU class."""
 

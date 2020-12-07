@@ -28,14 +28,7 @@ class CPU:
         for instruction in program:
             if instruction[0] != "#" and instruction != '\n':
                 instruction = instruction[:8]
-                if instruction == "01000111":
-                    self.ram[address] = 'PRN'
-                elif instruction == "10000010":
-                    self.ram[address] = 'LDI'
-                elif instruction == "00000001":
-                    self.ram[address] = 'HLT'
-                else:
-                    self.ram[address] = int(instruction,2)
+                self.ram[address] = int(instruction,2)
                 address += 1
 
     def alu(self, op, reg_a, reg_b):
@@ -71,20 +64,27 @@ class CPU:
         while self.pc < len(self.ram):
             ir = self.pc
             instruction = self.ram_read(ir)
-            try:
-                operand_a, operand_b = self.ram_read(ir + 1), self.ram_read(ir + 2)
-            except IndexError:
-                operand_a, operand_b = None, None
-            if instruction == "HLT":
+            num_operands = instruction >> 6
+            if instruction == 0b0001:
+                # HLT
                 break
-            elif instruction == "LDI":
+            operand_a = None
+            operand_b = None
+            if num_operands == 2:
+                operand_a = self.ram_read(ir+1)
+                operand_b = self.ram_read(ir+2)
+                self.pc += 3
+            if num_operands == 1:
+                operand_a = self.ram_read(ir+1)
+                self.pc += 2
+            if num_operands == 0:
+                self.pc += 1
+            if instruction == 0b10000010:
                 self.LDI(operand_a, operand_b)
-                self.pc += 1
-            elif instruction == "PRN":
+            elif instruction == 0b01000111:
                 self.PRN(operand_a)
-                self.pc += 1
-            else:
-                self.pc += 1
+            elif instruction == 0b10100010:
+                self.MUL(operand_a,operand_b)
 
 
     def LDI(self, address, value):
@@ -92,3 +92,6 @@ class CPU:
 
     def PRN(self, address):
         print(self.reg[address])
+
+    def MUL(self, address1, address2):
+        self.reg[address1] = self.reg[address1] * self.reg[address2]

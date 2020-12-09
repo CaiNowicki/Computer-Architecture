@@ -1,7 +1,5 @@
 """CPU functionality."""
 
-import sys
-
 
 class CPU:
     """Main CPU class."""
@@ -10,6 +8,7 @@ class CPU:
         self.ram = [0] * 256
         self.reg = [0] * 8
         self.pc = 0
+        self.reg[7] = 0xF4
 
     def ram_read(self, MAR):
         return self.ram[MAR]
@@ -28,7 +27,7 @@ class CPU:
         for instruction in program:
             if instruction[0] != "#" and instruction != '\n':
                 instruction = instruction[:8]
-                self.ram[address] = int(instruction,2)
+                self.ram[address] = int(instruction, 2)
                 address += 1
 
     def alu(self, op, reg_a, reg_b):
@@ -36,7 +35,8 @@ class CPU:
 
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
-        #elif op == "SUB": etc
+        elif op == "MUL":
+            self.reg[reg_a] *= self.reg[reg_b]
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -48,8 +48,8 @@ class CPU:
 
         print(f"TRACE: %02X | %02X %02X %02X |" % (
             self.pc,
-            #self.fl,
-            #self.ie,
+            # self.fl,
+            # self.ie,
             self.ram_read(self.pc),
             self.ram_read(self.pc + 1),
             self.ram_read(self.pc + 2)
@@ -71,21 +71,24 @@ class CPU:
             operand_a = None
             operand_b = None
             if num_operands == 2:
-                operand_a = self.ram_read(ir+1)
-                operand_b = self.ram_read(ir+2)
+                operand_a = self.ram_read(ir + 1)
+                operand_b = self.ram_read(ir + 2)
                 self.pc += 3
-            if num_operands == 1:
-                operand_a = self.ram_read(ir+1)
+            elif num_operands == 1:
+                operand_a = self.ram_read(ir + 1)
                 self.pc += 2
-            if num_operands == 0:
+            elif num_operands == 0:
                 self.pc += 1
             if instruction == 0b10000010:
                 self.LDI(operand_a, operand_b)
             elif instruction == 0b01000111:
                 self.PRN(operand_a)
             elif instruction == 0b10100010:
-                self.MUL(operand_a,operand_b)
-
+                self.alu('MUL', operand_a, operand_b)
+            elif instruction == 0b01000101:
+                self.PUSH()
+            elif instruction == 0b01000110:
+                self.POP()
 
     def LDI(self, address, value):
         self.reg[address] = value
@@ -93,5 +96,16 @@ class CPU:
     def PRN(self, address):
         print(self.reg[address])
 
-    def MUL(self, address1, address2):
-        self.reg[address1] = self.reg[address1] * self.reg[address2]
+    def PUSH(self):
+        self.reg[7] -= 1
+        register_address = self.ram_read(self.pc+1)
+        value = self.reg[register_address]
+        SP = self.reg[7]
+        self.ram_write(SP, value)
+
+    def POP(self):
+        SP = self.reg[7]
+        value = self.ram_read(SP)
+        register_address = self.ram_read(self.pc+1)
+        self.reg[register_address] = value
+        self.reg[7] += 1

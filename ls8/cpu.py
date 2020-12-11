@@ -9,6 +9,7 @@ class CPU:
         self.reg = [0] * 8
         self.pc = 0
         self.reg[7] = 0xF4
+        self.flags = [0] * 8
 
     def ram_read(self, MAR):
         return self.ram[MAR]
@@ -37,6 +38,13 @@ class CPU:
             self.reg[reg_a] += self.reg[reg_b]
         elif op == "MUL":
             self.reg[reg_a] *= self.reg[reg_b]
+        elif op == "CMP":
+            if self.reg[reg_a] == self.reg[reg_b]:
+                self.flags[7] = 1
+            elif self.reg[reg_a] < self.reg[reg_b]:
+                self.flags[5] = 1
+            elif self.reg[reg_a] > self.reg[reg_b]:
+                self.flags[6] = 1
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -78,7 +86,7 @@ class CPU:
                 operand_a = self.ram_read(ir + 1)
             if instruction == 0b10000010:
                 self.LDI(operand_a, operand_b)
-            if instruction == 0b10100000:
+            elif instruction == 0b10100000:
                 self.alu("ADD", operand_a, operand_b)
             elif instruction == 0b01000111:
                 self.PRN(operand_a)
@@ -92,6 +100,12 @@ class CPU:
                 self.CALL(operand_a)
             elif instruction == 0b00010001:
                 self.RET()
+            elif instruction == 0b10000100:
+                self.ST(operand_a, operand_b)
+            elif instruction == 0b01010100:
+                self.JMP(operand_a)
+            elif instruction == 0b10100111:
+                self.alu("CMP", operand_a, operand_b)
             if not sets_pc_directly:
                 self.pc += (1 + num_operands)
 
@@ -127,3 +141,12 @@ class CPU:
         return_address = self.ram_read(SP)
         self.reg[7] += 1
         self.pc = return_address
+
+    def ST(self, registerA, registerB):
+        value = self.reg[registerB]
+        address = self.reg[registerA]
+        self.ram_write(address, value)
+
+    def JMP(self, register_address):
+        self.pc = self.reg[register_address]
+

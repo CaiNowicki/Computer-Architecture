@@ -70,25 +70,31 @@ class CPU:
                 break
             operand_a = None
             operand_b = None
+            sets_pc_directly = ((instruction >> 4) & 0b001) == 0b001
             if num_operands == 2:
                 operand_a = self.ram_read(ir + 1)
                 operand_b = self.ram_read(ir + 2)
-                self.pc += 3
             elif num_operands == 1:
                 operand_a = self.ram_read(ir + 1)
-                self.pc += 2
-            elif num_operands == 0:
-                self.pc += 1
             if instruction == 0b10000010:
                 self.LDI(operand_a, operand_b)
+            if instruction == 0b10100000:
+                self.alu("ADD", operand_a, operand_b)
             elif instruction == 0b01000111:
                 self.PRN(operand_a)
             elif instruction == 0b10100010:
                 self.alu('MUL', operand_a, operand_b)
             elif instruction == 0b01000101:
-                self.PUSH()
+                self.PUSH(operand_a)
             elif instruction == 0b01000110:
-                self.POP()
+                self.POP(operand_a)
+            elif instruction == 0b01010000:
+                self.CALL(operand_a)
+            elif instruction == 0b00010001:
+                self.RET()
+            if not sets_pc_directly:
+                self.pc += (1 + num_operands)
+
 
     def LDI(self, address, value):
         self.reg[address] = value
@@ -96,16 +102,28 @@ class CPU:
     def PRN(self, address):
         print(self.reg[address])
 
-    def PUSH(self):
+    def PUSH(self, register_address):
         self.reg[7] -= 1
-        register_address = self.ram_read(self.pc+1)
         value = self.reg[register_address]
         SP = self.reg[7]
         self.ram_write(SP, value)
 
-    def POP(self):
+    def POP(self, register_address):
         SP = self.reg[7]
         value = self.ram_read(SP)
-        register_address = self.ram_read(self.pc+1)
         self.reg[register_address] = value
         self.reg[7] += 1
+
+    def CALL(self, register_address):
+        next_instruction_address = self.pc + 2
+        self.reg[7] -= 1
+        SP = self.reg[7]
+        self.ram_write(SP, next_instruction_address)
+        jump_to = self.reg[register_address]
+        self.pc = jump_to
+
+    def RET(self):
+        SP = self.reg[7]
+        return_address = self.ram_read(SP)
+        self.reg[7] += 1
+        self.pc = return_address

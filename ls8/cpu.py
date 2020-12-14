@@ -31,7 +31,7 @@ class CPU:
                 self.ram[address] = int(instruction, 2)
                 address += 1
 
-    def alu(self, op, reg_a, reg_b):
+    def alu(self, op, reg_a, reg_b=None):
         """ALU operations."""
 
         if op == "ADD":
@@ -51,6 +51,17 @@ class CPU:
             self.reg[reg_a] = self.reg[reg_a] | self.reg[reg_b]
         elif op == "XOR":
             self.reg[reg_a] = self.reg[reg_a] ^ self.reg[reg_b]
+        elif op == "NOT":
+            self.reg[reg_a] = ~self.reg[reg_a]
+        elif op == "SHL":
+            self.reg[reg_a] = self.reg[reg_a] << self.reg[reg_b]
+        elif op == "SHR":
+            self.reg[reg_a] = self.reg[reg_a] >> self.reg[reg_b]
+        elif op == "MOD":
+            if reg_b == 0:
+                self.HLT()
+            else:
+                self.reg[reg_a] = self.reg[reg_a] % self.reg[reg_b]
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -80,8 +91,7 @@ class CPU:
             instruction = self.ram_read(ir)
             num_operands = instruction >> 6
             if instruction == 0b0001:
-                # HLT
-                break
+                self.HLT()
             operand_a = None
             operand_b = None
             sets_pc_directly = ((instruction >> 4) & 0b001) == 0b001
@@ -119,9 +129,23 @@ class CPU:
                 self.JNE(operand_a)
             elif instruction == 0b10101000:
                 self.alu("AND", operand_a, operand_b)
+            elif instruction == 0b10101010:
+                self.alu("OR", operand_a, operand_b)
+            elif instruction == 0b10101011:
+                self.alu("XOR", operand_a, operand_b)
+            elif instruction == 0b01101001:
+                self.alu("NOT", operand_a)
+            elif instruction == 0b10101100:
+                self.alu("SHL", operand_a, operand_b)
+            elif instruction == 0b10101101:
+                self.alu("SHR", operand_a, operand_b)
+            elif instruction == 0b10100100:
+                self.alu("MOD", operand_a, operand_b)
             if not sets_pc_directly:
                 self.pc += (1 + num_operands)
 
+    def HLT(self):
+        exit("Program Halted")
 
     def LDI(self, address, value):
         self.reg[address] = value

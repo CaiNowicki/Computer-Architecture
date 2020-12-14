@@ -463,6 +463,7 @@ Divide the value in the first register by the value in the second,
 storing the _remainder_ of the result in registerA.
 
 If the value in the second register is 0, the system should print an
+If the value in the second register is 0, the system should print an
 error message and halt.
 
 Machine code:

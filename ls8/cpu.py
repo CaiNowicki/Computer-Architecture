@@ -1,5 +1,6 @@
 """CPU functionality."""
-
+from datetime import datetime
+import binascii
 
 class CPU:
     """Main CPU class."""
@@ -59,9 +60,13 @@ class CPU:
             self.reg[reg_a] = self.reg[reg_a] >> self.reg[reg_b]
         elif op == "MOD":
             if reg_b == 0:
-                self.HLT()
+                self.HLT(f"Program Halted at line {self.pc}: Divide by zero error!")
             else:
                 self.reg[reg_a] = self.reg[reg_a] % self.reg[reg_b]
+        elif op == "INC":
+            self.reg[reg_a] += 1
+        elif op == "DEC":
+            self.reg[reg_a] -= 1
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -86,7 +91,29 @@ class CPU:
         print()
 
     def run(self):
+        time = datetime.now()
         while self.pc < len(self.ram):
+            elapsed = datetime.now() - time
+            if elapsed.seconds >= 1:
+                self.reg[6] |= (1 << 0)
+                # sets the 0th bit of register 6 to 1
+            if self.reg[6] > 0:
+                masked_interrupts = self.reg[5] & self.reg[6]
+                interrupt = False
+                for i in range(8):
+                    interrupt = ((masked_interrupts >> i) & 1) == 1
+                    if interrupt:
+                        self.reg[6] = 0
+                        # clear all interrupt flags
+                        self.reg[7] -= 1
+                        self.ram_write(self.reg[7], self.pc)
+                        self.reg[7] -= 1
+                        self.ram_write(self.reg[7], self.flags)
+                        for j in range(0,7):
+                            self.PUSH(j)
+                        vector_address = 0xFF - (8-i)
+                        self.pc = self.ram_read(vector_address)
+                        break
             ir = self.pc
             instruction = self.ram_read(ir)
             num_operands = instruction >> 6
@@ -100,7 +127,6 @@ class CPU:
                 operand_b = self.ram_read(ir + 2)
             elif num_operands == 1:
                 operand_a = self.ram_read(ir + 1)
-
             if instruction == 0b10000010:
                 self.LDI(operand_a, operand_b)
             elif instruction == 0b10100000:
@@ -127,6 +153,12 @@ class CPU:
                 self.JEQ(operand_a)
             elif instruction == 0b01010110:
                 self.JNE(operand_a)
+            elif instruction == 0b01001000:
+                self.PRA(operand_a)
+            elif instruction == 0b01100101:
+                self.alu("INC", operand_a)
+            elif instruction == 0b01100110:
+                self.alu("DEC", operand_a)
             elif instruction == 0b10101000:
                 self.alu("AND", operand_a, operand_b)
             elif instruction == 0b10101010:
@@ -144,8 +176,8 @@ class CPU:
             if not sets_pc_directly:
                 self.pc += (1 + num_operands)
 
-    def HLT(self):
-        exit("Program Halted")
+    def HLT(self, error_message=""):
+        exit(error_message)
 
     def LDI(self, address, value):
         self.reg[address] = value
@@ -198,3 +230,7 @@ class CPU:
             self.pc = self.reg[register]
         else:
             self.pc += 1
+
+    def PRA(self, register):
+        value = self.reg[register]
+        print(chr(value))

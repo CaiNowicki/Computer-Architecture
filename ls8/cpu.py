@@ -45,6 +45,12 @@ class CPU:
                 self.flags[5] = 1
             elif self.reg[reg_a] > self.reg[reg_b]:
                 self.flags[6] = 1
+        elif op == "AND":
+            self.reg[reg_a] = self.reg[reg_a] & self.reg[reg_b]
+        elif op == "OR":
+            self.reg[reg_a] = self.reg[reg_a] | self.reg[reg_b]
+        elif op == "XOR":
+            self.reg[reg_a] = self.reg[reg_a] ^ self.reg[reg_b]
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -84,6 +90,7 @@ class CPU:
                 operand_b = self.ram_read(ir + 2)
             elif num_operands == 1:
                 operand_a = self.ram_read(ir + 1)
+
             if instruction == 0b10000010:
                 self.LDI(operand_a, operand_b)
             elif instruction == 0b10100000:
@@ -110,6 +117,8 @@ class CPU:
                 self.JEQ(operand_a)
             elif instruction == 0b01010110:
                 self.JNE(operand_a)
+            elif instruction == 0b10101000:
+                self.alu("AND", operand_a, operand_b)
             if not sets_pc_directly:
                 self.pc += (1 + num_operands)
 

@@ -91,11 +91,13 @@ class CPU:
         print()
 
     def run(self):
-        self.trace()
         time = datetime.now()
         interrupt = False
         while self.pc < len(self.ram):
             elapsed = datetime.now() - time
+            if elapsed.seconds >= 1:
+                self.reg[6] |= (1 << 0)
+                # sets the 0th bit of register 6 to 1
             if self.reg[6] > 0 and not interrupt:
                 masked_interrupts = self.reg[5] & self.reg[6]
                 for i in range(8):
@@ -112,9 +114,6 @@ class CPU:
                         vector_address = 0xFF - (7-i)
                         self.pc = self.ram_read(vector_address)
                         break
-            if elapsed.seconds >= 1:
-                self.reg[6] |= (1 << 0)
-                # sets the 0th bit of register 6 to 1
             ir = self.pc
             instruction = self.ram_read(ir)
             num_operands = instruction >> 6
@@ -175,7 +174,7 @@ class CPU:
             elif instruction == 0b10100100:
                 self.alu("MOD", operand_a, operand_b)
             elif instruction == 0b00010011:
-                self.IRET()
+                interrupt, time = self.IRET()
             if not sets_pc_directly:
                 self.pc += (1 + num_operands)
 
@@ -251,3 +250,4 @@ class CPU:
         self.reg[7] += 1
         interrupt = False
         time = datetime.now()
+        return interrupt, time

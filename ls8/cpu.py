@@ -91,15 +91,13 @@ class CPU:
         print()
 
     def run(self):
+        self.trace()
         time = datetime.now()
+        interrupt = False
         while self.pc < len(self.ram):
             elapsed = datetime.now() - time
-            if elapsed.seconds >= 1:
-                self.reg[6] |= (1 << 0)
-                # sets the 0th bit of register 6 to 1
-            if self.reg[6] > 0:
+            if self.reg[6] > 0 and not interrupt:
                 masked_interrupts = self.reg[5] & self.reg[6]
-                interrupt = False
                 for i in range(8):
                     interrupt = ((masked_interrupts >> i) & 1) == 1
                     if interrupt:
@@ -111,9 +109,12 @@ class CPU:
                         self.ram_write(self.reg[7], self.flags)
                         for j in range(0,7):
                             self.PUSH(j)
-                        vector_address = 0xFF - (8-i)
+                        vector_address = 0xFF - (7-i)
                         self.pc = self.ram_read(vector_address)
                         break
+            if elapsed.seconds >= 1:
+                self.reg[6] |= (1 << 0)
+                # sets the 0th bit of register 6 to 1
             ir = self.pc
             instruction = self.ram_read(ir)
             num_operands = instruction >> 6
@@ -173,6 +174,8 @@ class CPU:
                 self.alu("SHR", operand_a, operand_b)
             elif instruction == 0b10100100:
                 self.alu("MOD", operand_a, operand_b)
+            elif instruction == 0b00010011:
+                self.IRET()
             if not sets_pc_directly:
                 self.pc += (1 + num_operands)
 
@@ -234,3 +237,17 @@ class CPU:
     def PRA(self, register):
         value = self.reg[register]
         print(chr(value))
+
+    def IRET(self):
+        for i in range(6,-1,-1):
+            self.POP(i)
+        SP = self.reg[7]
+        value = self.ram_read(SP)
+        self.flags = value
+        self.reg[7] += 1
+        SP = self.reg[7]
+        value = self.ram_read(SP)
+        self.pc = value
+        self.reg[7] += 1
+        interrupt = False
+        time = datetime.now()

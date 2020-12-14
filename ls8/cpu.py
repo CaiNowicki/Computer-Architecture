@@ -106,6 +106,10 @@ class CPU:
                 self.JMP(operand_a)
             elif instruction == 0b10100111:
                 self.alu("CMP", operand_a, operand_b)
+            elif instruction == 0b01010101:
+                self.JEQ(operand_a)
+            elif instruction == 0b01010110:
+                self.JNE(operand_a)
             if not sets_pc_directly:
                 self.pc += (1 + num_operands)
 
@@ -147,6 +151,17 @@ class CPU:
         address = self.reg[registerA]
         self.ram_write(address, value)
 
-    def JMP(self, register_address):
-        self.pc = self.reg[register_address]
+    def JMP(self, register):
+        self.pc = self.reg[register]
 
+    def JEQ(self, register):
+        if self.flags[7] == 1:
+            self.pc = self.reg[register]
+        else:
+            self.pc += 1
+
+    def JNE(self, register):
+        if self.flags[7] == 0:
+            self.pc = self.reg[register]
+        else:
+            self.pc += 1

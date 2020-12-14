@@ -1,6 +1,9 @@
 """CPU functionality."""
 from datetime import datetime
-import binascii
+import msvcrt
+
+def keypress():
+    return ord(msvcrt.getch()) if msvcrt.kbhit() else 0
 
 class CPU:
     """Main CPU class."""
@@ -98,6 +101,10 @@ class CPU:
             if elapsed.seconds >= 1:
                 self.reg[6] |= (1 << 0)
                 # sets the 0th bit of register 6 to 1
+            key = keypress()
+            if key != 0:
+                self.reg[6] |= (1 << 1)
+                self.ram_write(0xF4, key)
             if self.reg[6] > 0 and not interrupt:
                 masked_interrupts = self.reg[5] & self.reg[6]
                 for i in range(8):
@@ -175,6 +182,8 @@ class CPU:
                 self.alu("MOD", operand_a, operand_b)
             elif instruction == 0b00010011:
                 interrupt, time = self.IRET()
+            elif instruction == 0b10000011:
+                self.LD(operand_a, operand_b)
             if not sets_pc_directly:
                 self.pc += (1 + num_operands)
 
@@ -251,3 +260,7 @@ class CPU:
         interrupt = False
         time = datetime.now()
         return interrupt, time
+
+    def LD(self, reg_a, reg_b):
+        value = self.ram_read(self.reg[reg_b])
+        self.reg[reg_a] = value
